@@ -11,16 +11,14 @@ import re
 import time
 from typing import Optional
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from fastapi import HTTPException
 
 from app.core.config import settings
 from app.models.schemas import SectorScore
 
 logger = logging.getLogger(__name__)
-
-genai.configure(api_key=settings.gemini_api_key)
-
 
 _SYSTEM_PROMPT = (
     "You are NexusTrade Intelligence Engine — an elite market analyst specialising in "
@@ -85,16 +83,16 @@ At the end, include a JSON block (fenced with ```json) with this exact shape:
   }
 }
 ```
-Score criteria: overall = weighted average; market_size = TAM relevance (100=USD 50B+); 
+Score criteria: overall = weighted average; market_size = TAM relevance (100=USD 50B+);
 growth_velocity = YoY growth rate (100=30%+); competitive_gap = whitespace for new entrants;
 risk_adjusted = opportunity net of geopolitical/regulatory risk.
 """
 
     return f"""## NexusTrade Analysis Request
 
-**Sector:** {sector}  
-**Focus Region:** {region}  
-**Depth:** {depth}  
+**Sector:** {sector}
+**Focus Region:** {region}
+**Depth:** {depth}
 **Target word count:** {cfg["words"]}
 
 ---
@@ -122,14 +120,7 @@ Generate a trade intelligence report with EXACTLY these sections:
 
 class IntelligenceService:
     def __init__(self):
-        self._model = genai.GenerativeModel(
-            model_name=settings.gemini_model,
-            generation_config=genai.GenerationConfig(
-                temperature=settings.gemini_temperature,
-                max_output_tokens=settings.gemini_max_output_tokens,
-            ),
-            system_instruction=_SYSTEM_PROMPT,
-        )
+        self._client = genai.Client(api_key=settings.gemini_api_key)
 
     async def analyse(
         self,
@@ -145,7 +136,15 @@ class IntelligenceService:
         for attempt in range(3):
             try:
                 response = await loop.run_in_executor(
-                    None, lambda: self._model.generate_content(prompt)
+                    None, lambda: self._client.models.generate_content(
+                        model=settings.gemini_model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=_SYSTEM_PROMPT,
+                            temperature=settings.gemini_temperature,
+                            max_output_tokens=settings.gemini_max_output_tokens,
+                        ),
+                    )
                 )
                 elapsed = time.monotonic() - start
                 logger.info(
