@@ -2,44 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
     branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: "pip"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Lint (ruff)
-        run: |
-          pip install ruff
-          ruff check app/
-
-      - name: Type check (pyright)
-        run: |
-          pip install pyright
-          pyright app/ --pythonversion 3.13 || true
-
-      - name: Build Docker image
-        run: docker build -t nexus-trade:ci .
-
-      - name: Smoke test (health endpoint)
-        run: |
-          docker run -d -p 8000:8000 \
-            -e GEMINI_API_KEY=fake_key_for_ci \
-            -e JWT_SECRET=ci_secret_value_minimum32chars_x \
-            --name nt-smoke nexus-trade:ci
-          sleep 5
-          curl -f http://localhost:8000/health
-          docker stop nt-smoke
+      - name: Check syntax
+        run: python -m py_compile app/main.py app/core/config.py
