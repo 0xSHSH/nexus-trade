@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: nexustrade-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend-domain.com
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+    healthCheckPath: /health
+    autoDeploy: true
